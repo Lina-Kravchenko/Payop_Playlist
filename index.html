@@ -568,7 +568,7 @@ function render() {
     return `<div class="song-item${active ? ' active-song' : ''}" id="si${i}">
       <span class="snum">${i + 1}</span>
       ${s.artwork
-        ? `<img class="s-art" src="${esc(s.artwork)}" />`
+        ? `<img class="s-art" src="${s.artwork}" alt="" loading="lazy">`
         : `<div class="s-art-ph">♪</div>`}
       <div class="s-info">
         <div class="s-title">${esc(s.track)}</div>
