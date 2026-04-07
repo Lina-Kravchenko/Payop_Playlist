@@ -560,7 +560,7 @@ function render() {
   const filtered = activeFilter ? songs.filter(s => s.mood === activeFilter) : songs;
   if (!filtered.length) { area.innerHTML = '<div class="hint">No songs with this mood yet.</div>'; return; }
 
-  area.innerHTML = filtered.map((s) => { const i = songs.indexOf(s);
+  area.innerHTML = filtered.map((s, i) => {;
     const active  = i === currentIdx;
     const playing = active && isPlaying;
     const spotifyQ = encodeURIComponent(`${s.artist} ${s.track}`);
