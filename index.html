@@ -395,7 +395,6 @@ async function binSet(songs) {
     if (!r.ok) throw new Error('Failed to create bin: ' + r.status);
     const d = await r.json();
     BIN_ID = d.metadata.id;
-    localStorage.setItem('jsonbin_bin_id', BIN_ID);
   } else {
     const r = await fetch(`https://api.jsonbin.io/v3/b/${BIN_ID}`, {
       method: 'PUT',
