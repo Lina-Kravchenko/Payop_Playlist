@@ -432,7 +432,6 @@ async function loadSongs() {
   if (cached) {
     try {
       songs = JSON.parse(cached);
-      render();
     } catch(e) {}
   }
 
