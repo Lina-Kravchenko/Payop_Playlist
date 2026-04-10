@@ -427,15 +427,28 @@ function setFilter(el, mood) {
 
 // ── Load / Save ─────────────────────────────────────────────────────────────
 async function loadSongs() {
-  try {
-    songs = await binGet();
-  } catch(e) {
-    songs = [];
+  const cached = localStorage.getItem('playlist_cache');
+
+  if (cached) {
+    try {
+      songs = JSON.parse(cached);
+      render();
+    } catch(e) {}
   }
+
+  try {
+    const freshSongs = await binGet();
+    songs = freshSongs;
+    localStorage.setItem('playlist_cache', JSON.stringify(songs));
+  } catch(e) {
+    if (!cached) songs = [];
+  }
+
   render();
 }
 
 async function saveSongs() {
+  localStorage.setItem('playlist_cache', JSON.stringify(songs));
   await binSet(songs);
 }
 
@@ -559,7 +572,7 @@ function render() {
   const filtered = activeFilter ? songs.filter(s => s.mood === activeFilter) : songs;
   if (!filtered.length) { area.innerHTML = '<div class="hint">No songs with this mood yet.</div>'; return; }
 
-  area.innerHTML = filtered.map((s, i) => {;
+  area.innerHTML = filtered.map((s, i) => {
     const active  = i === currentIdx;
     const playing = active && isPlaying;
     const spotifyQ = encodeURIComponent(`${s.artist} ${s.track}`);
