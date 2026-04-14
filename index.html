@@ -557,20 +557,23 @@ async function addSong() {
   try {
     const latest = await binGet();
     if (latest && Array.isArray(latest)) {
-      songs = latest;
+      songs = latest.map(song => ({
+        ...song,
+        likes: Array.isArray(song.likes) ? song.likes : []
+      }));
     }
    
     songs.push({
       name,
-      track:   selected.trackName,
-      artist:  selected.artistName,
+      track: selected.trackName,
+      artist: selected.artistName,
       artwork: (selected.artworkUrl100 || selected.artworkUrl60 || '').replace('100x100', '300x300'),
       preview: selected.previewUrl || '',
       trackId: selected.trackId || '',
-      mood:    selectedMood || '',
-      ts: Date.now()
+      mood: selectedMood || '',
+      ts: Date.now(),
       likes: []
-    });
+});
     await saveSongs();
     render();
     selected = null; selectedMood = null;
