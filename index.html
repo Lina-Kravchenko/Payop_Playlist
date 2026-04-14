@@ -199,7 +199,29 @@
     color: var(--text3); display: flex; align-items: center; justify-content: center;
   }
   .del-s:hover { background: var(--bg2); color: var(--text); border: none; }
+ .like-s {
+  min-width: 52px;
+  height: 30px;
+  border-radius: 999px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  gap: 4px;
+}
 
+.like-s.liked {
+  background: var(--bg-info);
+  border-color: rgba(55,138,221,0.4);
+  color: var(--text-info);
+}
+
+.song-likes {
+  font-size: 11px;
+  margin-top: 3px;
+  color: var(--text2);
+}
   .hint { font-size: 14px; color: var(--text2); padding: 2rem 0; text-align: center; }
   .loading { font-size: 13px; color: var(--text2); padding: 1rem 0; text-align: center; }
 
@@ -430,14 +452,20 @@ async function loadSongs() {
   const cached = localStorage.getItem('playlist_cache');
 
   if (cached) {
-    try {
-      songs = JSON.parse(cached);
-    } catch(e) {}
-  }
+  try {
+    songs = JSON.parse(cached).map(song => ({
+      ...song,
+      likes: Array.isArray(song.likes) ? song.likes : []
+    }));
+  } catch(e) {}
+}
 
   try {
     const freshSongs = await binGet();
-    songs = freshSongs;
+    songs = (freshSongs || []).map(song => ({
+      ...song,
+      likes: Array.isArray(song.likes) ? song.likes : []
+    }));
     localStorage.setItem('playlist_cache', JSON.stringify(songs));
   } catch(e) {
     if (!cached) songs = [];
@@ -541,6 +569,7 @@ async function addSong() {
       trackId: selected.trackId || '',
       mood:    selectedMood || '',
       ts: Date.now()
+      likes: []
     });
     await saveSongs();
     render();
@@ -573,14 +602,24 @@ function render() {
 
   document.getElementById('filter-bar').style.display = n > 0 ? 'flex' : 'none';
   if (!n) { area.innerHTML = '<div class="hint">Nothing here yet — be the first! 🎶</div>'; return; }
-  const filtered = activeFilter ? songs.filter(s => s.mood === activeFilter) : songs;
-  if (!filtered.length) { area.innerHTML = '<div class="hint">No songs with this mood yet.</div>'; return; }
+  const filtered = activeFilter
+    ? songs.map((song, index) => ({ song, index })).filter(item => item.song.mood === activeFilter)
+    : songs.map((song, index) => ({ song, index }));
 
-  area.innerHTML = filtered.map((s, i) => {
-    const active  = i === currentIdx;
+  if (!filtered.length) {
+    area.innerHTML = '<div class="hint">No songs with this mood yet.</div>';
+    return;
+  }
+
+area.innerHTML = filtered.map(({ song: s, index }, i) => {
+    const active = index === currentIdx;
     const playing = active && isPlaying;
     const spotifyQ = encodeURIComponent(`${s.artist} ${s.track}`);
-    const ytQ      = encodeURIComponent(`${s.artist} ${s.track}`);
+    const ytQ = encodeURIComponent(`${s.artist} ${s.track}`);
+    const likes = Array.isArray(s.likes) ? s.likes : [];
+    const currentUser = document.getElementById('uname').value.trim();
+    const likedByCurrentUser = currentUser ? likes.includes(currentUser) : false;
+    const likesTitle = likes.length ? `Liked by: ${likes.join(', ')}` : 'No likes yet';
     return `<div class="song-item${active ? ' active-song' : ''}" id="si${i}">
       <span class="snum">${i + 1}</span>
       ${s.artwork
@@ -590,15 +629,21 @@ function render() {
         <div class="s-title">${esc(s.track)}</div>
         <div class="s-meta">${esc(s.artist)} · by ${esc(s.name)}</div>
         ${s.mood ? `<div class="song-mood">${esc(s.mood)}</div>` : ''}
+        ${likes.length ? `<div class="song-likes">❤️ ${likes.length} · ${esc(likes.join(', '))}</div>` : ''}
       </div>
       <div class="s-actions">
         ${s.preview
-          ? `<button class="play-s${playing ? ' playing' : ''}" onclick="playSong(${i})" title="${playing ? 'Пауза' : 'Слухати прев\'ю'}">${playing ? '⏸' : '▶'}</button>`
+          ? `<button class="play-s${playing ? ' playing' : ''}" onclick="playSong(${index})" title="${playing ? 'Пауза' : 'Слухати прев\'ю'}">${playing ? '⏸' : '▶'}</button>`
           : ''}
+        <button
+          class="like-s${likedByCurrentUser ? ' liked' : ''}"
+          onclick="toggleLike(${index})"
+          title="${esc(likesTitle)}"
+        >❤️ ${likes.length}</button>
         <a class="open-s" href="https://open.spotify.com/search/${spotifyQ}" target="_blank" title="Open in Spotify" aria-label="Open in Spotify"><svg width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path fill="#1DB954" d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/></svg></a>
         <a class="open-s" href="https://music.apple.com/search?term=${spotifyQ}" target="_blank" title="Open in Apple Music" aria-label="Open in Apple Music"><svg width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><rect width="24" height="24" rx="5.5" fill="#FC3C44"/><path fill="white" d="M16.5 5.5h-5.25a.75.75 0 0 0-.75.75v7.31a2.5 2.5 0 1 0 1.5 2.29V10h3.75V8.5H12V7h4.5V5.5z"/></svg></a>
         <a class="open-s" href="https://music.youtube.com/search?q=${ytQ}" target="_blank" title="Open in YouTube Music" aria-label="Open in YouTube Music"><svg width="15" height="15" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><circle cx="12" cy="12" r="12" fill="#FF0000"/><circle cx="12" cy="12" r="7" fill="none" stroke="white" stroke-width="1.7"/><path fill="white" d="M10 8.9v6.2l5.1-3.1z"/></svg></a>
-        <button class="del-s" onclick="removeSong(${i})" title="Remove">✕</button>
+        <button class="del-s" onclick="removeSong(${index})" title="Remove">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -692,7 +737,41 @@ function seekTo(e) {
 }
 
 // ── Remove / Export ─────────────────────────────────────────────────────────
-async function removeSong(i) {
+async function toggleLike(i) {
+  const uname = document.getElementById('uname').value.trim();
+
+  if (!uname) {
+    showStatus('Enter your name to like songs', true);
+    return;
+  }
+
+  const song = songs[i];
+  if (!song) {
+    showStatus('Song not found', true);
+    return;
+  }
+
+  if (!Array.isArray(song.likes)) {
+    song.likes = [];
+  }
+
+  const alreadyLiked = song.likes.includes(uname);
+
+  if (alreadyLiked) {
+    song.likes = song.likes.filter(n => n !== uname);
+  } else {
+    song.likes.push(uname);
+  }
+
+  try {
+    await saveSongs();
+    render();
+  } catch (e) {
+    showStatus('Like save error: ' + e.message, true);
+  }
+}
+ 
+ async function removeSong(i) {
   if (currentIdx === i && audio) {
     audio.pause(); isPlaying = false; currentIdx = -1;
     document.getElementById('player-card').classList.remove('visible');
