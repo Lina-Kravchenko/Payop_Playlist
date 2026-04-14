@@ -527,6 +527,11 @@ async function addSong() {
   btn.disabled = true; btn.textContent = 'Saving…';
 
   try {
+    const latest = await binGet();
+    if (latest && Array.isArray(latest)) {
+      songs = latest;
+    }
+   
     songs.push({
       name,
       track:   selected.trackName,
